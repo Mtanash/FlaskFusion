@@ -109,3 +109,26 @@ def get_csv_statistics():
             )
 
     return json_util.dumps(statistics), 200
+
+
+@csv_routes.route("/csv/query", methods=["GET"])
+def query_csv():
+    column = request.args.get("column")
+    value = request.args.get("value")
+    page = request.args.get("page", default=1, type=int)
+    page_size = request.args.get("page_size", default=10, type=int)
+
+    skip = (page - 1) * page_size
+    limit = page_size
+
+    if not column or not value:
+        return jsonify({"message": "Missing column or value"}), 400
+
+    query = {column: value}
+    csv_data = db.csv.aggregate([{"$match": query}, {"$skip": skip}, {"$limit": limit}])
+    csv_count = db.csv.count_documents(query)
+
+    if not csv_data:
+        return jsonify({"message": "CSV data not found"}), 404
+
+    return json_util.dumps({"data": list(csv_data), "total": csv_count}), 200
