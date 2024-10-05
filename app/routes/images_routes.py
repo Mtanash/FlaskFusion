@@ -212,3 +212,65 @@ def resize_image(image_id):
 
     except Exception as e:
         return jsonify({"message": str(e)}), 500
+
+
+@images_routes.route("/images/<image_id>/crop", methods=["POST"])
+def crop_image(image_id):
+    left = request.json.get("left")
+    top = request.json.get("top")
+    right = request.json.get("right")
+    bottom = request.json.get("bottom")
+
+    if not left or not top or not right or not bottom:
+        return (
+            jsonify(
+                {"message": "Left, top, right, and bottom coordinates are required"}
+            ),
+            400,
+        )
+
+    try:
+        image = db.images.find_one({"_id": ObjectId(image_id)})
+        if not image:
+            return jsonify({"message": "Image not found"}), 404
+
+        image_path = image["file_path"]
+        img = Image.open(image_path)
+
+        # crop the image
+        cropped_img = img.crop((left, top, right, bottom))
+
+        # save the cropped image
+        cropped_img.save(image_path)
+
+        return jsonify({"message": "Image cropped successfully"}), 200
+
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
+
+
+@images_routes.route("/images/<image_id>/convert", methods=["POST"])
+def convert_image(image_id):
+    format = request.json.get("format")
+
+    if not format:
+        return jsonify({"message": "Format is required"}), 400
+
+    try:
+        image = db.images.find_one({"_id": ObjectId(image_id)})
+        if not image:
+            return jsonify({"message": "Image not found"}), 404
+
+        image_path = image["file_path"]
+        img = Image.open(image_path)
+
+        # convert the image
+        converted_img = img.convert(format)
+
+        # save the converted image
+        converted_img.save(image_path)
+
+        return jsonify({"message": "Image converted successfully"}), 200
+
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
