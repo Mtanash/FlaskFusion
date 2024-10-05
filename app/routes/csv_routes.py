@@ -1,9 +1,8 @@
 from flask import Blueprint, request, jsonify
 import os
 import pandas as pd
-import csv
 from app.db.db import db
-from bson import json_util
+from bson import ObjectId
 
 csv_routes = Blueprint("csv", __name__)
 
@@ -14,7 +13,10 @@ if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 
 
-@csv_routes.route("/csv", methods=["POST"])
+REQUIRED_FIELDS = ["total_bill", "tip", "sex", "smoker", "day", "time", "size"]
+
+
+@csv_routes.route("/csv/upload", methods=["POST"])
 def csv_upload():
     if "file" not in request.files:
         return jsonify({"message": "No file found"}), 400
@@ -29,9 +31,6 @@ def csv_upload():
         file.save(filepath)
 
         try:
-            # with open(filepath, newline="", encoding="utf-8") as csvfile:
-            #     reader = csv.DictReader(csvfile)
-            #     rows = list(reader)
 
             data = pd.read_csv(filepath)
             rows = data.to_dict(orient="records")
@@ -45,6 +44,42 @@ def csv_upload():
 
     else:
         return jsonify({"message": "Invalid file type"}), 400
+
+
+@csv_routes.route("/csv, methods=['POST']")
+def post_csv():
+    new_row = request.json
+
+    # validate data
+    if not new_row:
+        return jsonify({"message": "No data found"}), 400
+
+    for field in REQUIRED_FIELDS:
+        if field not in new_row:
+            return jsonify({"message": f"Missing required field: {field}"}), 400
+
+    try:
+        db.csv.insert_one(new_row)
+        return jsonify({"message": "CSV data inserted successfully"}), 200
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
+
+
+@csv_routes.route("/csv", methods=["PATCH"])
+def update_csv():
+    updated_row = request.json
+
+    if not updated_row:
+        return jsonify({"message": "No data found"}), 400
+
+    if "_id" not in updated_row:
+        return jsonify({"message": "Missing _id field"}), 400
+
+    try:
+        db.csv.update_one({"_id": ObjectId(updated_row["_id"])}, {"$set": updated_row})
+        return jsonify({"message": "CSV data updated successfully"}), 200
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
 
 
 @csv_routes.route("/csv", methods=["GET"])
@@ -61,10 +96,16 @@ def get_csv():
     skip = (page - 1) * page_size
     limit = page_size
     try:
-        data_cursor = db.csv.find().skip(skip).limit(limit)
+        data_cursor = db.csv.aggregate(
+            [
+                {"$skip": skip},
+                {"$limit": limit},
+                {"$addFields": {"_id": {"$toString": "$_id"}}},
+            ]
+        )
         data = list(data_cursor)
         total = db.csv.count_documents({})
-        return json_util.dumps({"data": data, "total": total}), 200
+        return jsonify({"data": data, "total": total}), 200
     except Exception as e:
         return jsonify({"message": str(e)}), 500
 
@@ -108,7 +149,7 @@ def get_csv_statistics():
                 orient="records"
             )
 
-    return json_util.dumps(statistics), 200
+    return jsonify(statistics), 200
 
 
 @csv_routes.route("/csv/query", methods=["GET"])
@@ -125,10 +166,17 @@ def query_csv():
         return jsonify({"message": "Missing column or value"}), 400
 
     query = {column: value}
-    csv_data = db.csv.aggregate([{"$match": query}, {"$skip": skip}, {"$limit": limit}])
+    csv_data = db.csv.aggregate(
+        [
+            {"$match": query},
+            {"$skip": skip},
+            {"$limit": limit},
+            {"$addFields": {"_id": {"$toString": "$_id"}}},
+        ]
+    )
     csv_count = db.csv.count_documents(query)
 
     if not csv_data:
         return jsonify({"message": "CSV data not found"}), 404
 
-    return json_util.dumps({"data": list(csv_data), "total": csv_count}), 200
+    return jsonify({"data": list(csv_data), "total": csv_count}), 200
