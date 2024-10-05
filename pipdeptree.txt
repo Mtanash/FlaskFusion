@@ -12,6 +12,13 @@ Flask==3.0.3
 │   └── MarkupSafe [required: >=2.0, installed: 2.1.5]
 └── Werkzeug [required: >=3.0.0, installed: 3.0.4]
     └── MarkupSafe [required: >=2.1.1, installed: 2.1.5]
+opencv-python==4.10.0.84
+├── numpy [required: >=1.21.2, installed: 2.1.1]
+├── numpy [required: >=1.23.5, installed: 2.1.1]
+├── numpy [required: >=1.26.0, installed: 2.1.1]
+├── numpy [required: >=1.17.0, installed: 2.1.1]
+├── numpy [required: >=1.17.3, installed: 2.1.1]
+└── numpy [required: >=1.19.3, installed: 2.1.1]
 pandas==2.2.3
 ├── numpy [required: >=1.26.0, installed: 2.1.1]
 ├── python-dateutil [required: >=2.8.2, installed: 2.9.0.post0]
@@ -21,4 +28,20 @@ pandas==2.2.3
 pipdeptree==2.23.4
 ├── packaging [required: >=24.1, installed: 24.1]
 └── pip [required: >=24.2, installed: 24.2]
+pymongo==4.10.1
+└── dnspython [required: >=1.16.0,<3.0.0, installed: 2.6.1]
 python-dotenv==1.0.1
+scikit-image==0.24.0
+├── imageio [required: >=2.33, installed: 2.35.1]
+│   ├── numpy [required: Any, installed: 2.1.1]
+│   └── pillow [required: >=8.3.2, installed: 10.4.0]
+├── lazy_loader [required: >=0.4, installed: 0.4]
+│   └── packaging [required: Any, installed: 24.1]
+├── networkx [required: >=2.8, installed: 3.3]
+├── numpy [required: >=1.23, installed: 2.1.1]
+├── packaging [required: >=21, installed: 24.1]
+├── pillow [required: >=9.1, installed: 10.4.0]
+├── scipy [required: >=1.9, installed: 1.14.1]
+│   └── numpy [required: >=1.23.5,<2.3, installed: 2.1.1]
+└── tifffile [required: >=2022.8.12, installed: 2024.9.20]
+    └── numpy [required: Any, installed: 2.1.1]

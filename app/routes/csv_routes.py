@@ -65,19 +65,25 @@ def post_csv():
         return jsonify({"message": str(e)}), 500
 
 
-@csv_routes.route("/csv", methods=["PATCH"])
-def update_csv():
+@csv_routes.route("/csv/<csv_id>", methods=["PATCH"])
+def update_csv(csv_id):
     updated_row = request.json
 
     if not updated_row:
         return jsonify({"message": "No data found"}), 400
 
-    if "_id" not in updated_row:
-        return jsonify({"message": "Missing _id field"}), 400
-
     try:
-        db.csv.update_one({"_id": ObjectId(updated_row["_id"])}, {"$set": updated_row})
+        db.csv.update_one({"_id": ObjectId(csv_id)}, {"$set": updated_row})
         return jsonify({"message": "CSV data updated successfully"}), 200
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
+
+
+@csv_routes.route("/csv/<csv_id>", methods=["DELETE"])
+def delete_csv(csv_id):
+    try:
+        db.csv.delete_one({"_id": ObjectId(csv_id)})
+        return jsonify({"message": "CSV data deleted successfully"}), 200
     except Exception as e:
         return jsonify({"message": str(e)}), 500
 
