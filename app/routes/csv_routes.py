@@ -3,17 +3,16 @@ import os
 import pandas as pd
 from app.db.db import db
 from bson import ObjectId
+from werkzeug.utils import secure_filename
+from datetime import datetime
 
 csv_routes = Blueprint("csv", __name__)
 
-UPLOAD_FOLDER = os.path.join(os.getcwd(), "uploads")
+UPLOAD_FOLDER = os.path.join(os.getcwd(), "uploads/csv")
 
 # Create the uploads folder if it doesn't exist
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
-
-
-REQUIRED_FIELDS = ["total_bill", "tip", "sex", "smoker", "day", "time", "size"]
 
 
 @csv_routes.route("/csv/upload", methods=["POST"])
@@ -26,21 +25,35 @@ def csv_upload():
         return jsonify({"message": "No file found"}), 400
 
     if file and file.filename.endswith(".csv"):
-        print(f"Saving {file.filename} to {os.path.join(UPLOAD_FOLDER, file.filename)}")
-        filepath = os.path.join(UPLOAD_FOLDER, file.filename)
+        filename = secure_filename(file.filename)
+
+        # check if file already exists
+        if filename in os.listdir(UPLOAD_FOLDER):
+            return jsonify({"message": "File already exists"}), 400
+
+        filepath = os.path.join(UPLOAD_FOLDER, filename)
         file.save(filepath)
 
-        try:
+        csv_metadata_id = ObjectId()
+        csv_metadata = {
+            "_id": csv_metadata_id,
+            "filename": filename,
+            "filepath": filepath,
+            "uploaded_at": datetime.now(),
+        }
 
-            data = pd.read_csv(filepath)
-            rows = data.to_dict(orient="records")
+        db.csvmetadata.insert_one(csv_metadata)
 
-            if rows and len(rows) > 0:
-                db.csv.insert_many(rows)
-                return jsonify({"message": "CSV uploaded successfully"}), 200
+        csv_data = pd.read_csv(filepath)
+        rows = csv_data.to_dict(orient="records")
 
-        except Exception as e:
-            return jsonify({"message": str(e)}), 500
+        # insert the csv id into the csv data
+        for row in rows:
+            row["csv_id"] = csv_metadata_id
+
+        db.csv.insert_many(rows)
+
+        return jsonify({"message": "CSV uploaded successfully"}), 200
 
     else:
         return jsonify({"message": "Invalid file type"}), 400
@@ -80,6 +93,16 @@ def update_csv(csv_id):
 
 
 @csv_routes.route("/csv/<csv_id>", methods=["DELETE"])
+def delete_csv_file(csv_id):
+    try:
+        db.csvmetadata.delete_one({"_id": ObjectId(csv_id)})
+        db.csv.delete_many({"csv_id": ObjectId(csv_id)})
+        return jsonify({"message": "CSV data deleted successfully"}), 200
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
+
+
+@csv_routes.route("/csv/delete/<csv_id>", methods=["DELETE"])
 def delete_csv(csv_id):
     try:
         db.csv.delete_one({"_id": ObjectId(csv_id)})
@@ -102,7 +125,7 @@ def get_csv():
     skip = (page - 1) * page_size
     limit = page_size
     try:
-        data_cursor = db.csv.aggregate(
+        data_cursor = db.csvmetadata.aggregate(
             [
                 {"$skip": skip},
                 {"$limit": limit},
@@ -116,9 +139,83 @@ def get_csv():
         return jsonify({"message": str(e)}), 500
 
 
-@csv_routes.route("/csv/statistics", methods=["GET"])
-def get_csv_statistics():
-    csv_data = db.csv.find()
+@csv_routes.route("/csv/<csv_id>", methods=["GET"])
+def get_csv_by_id(csv_id):
+    try:
+        csv_data = db.csvmetadata.aggregate(
+            [
+                {"$match": {"_id": ObjectId(csv_id)}},
+                {"$addFields": {"_id": {"$toString": "$_id"}}},
+            ],
+        )
+        if not csv_data:
+            return jsonify({"message": "CSV data not found"}), 404
+
+        return jsonify({"data": list(csv_data)[0]}), 200
+
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
+
+
+@csv_routes.route("/csv/<csv_id>/data", methods=["GET"])
+def get_csv_data_by_id(csv_id):
+    try:
+        page = request.args.get("page", default=1, type=int)
+        page_size = request.args.get("page_size", default=10, type=int)
+
+        if page < 1:
+            return jsonify({"message": "Invalid page number"}), 400
+
+        if page_size < 1:
+            return jsonify({"message": "Invalid page size"}), 400
+
+        skip = (page - 1) * page_size
+        limit = page_size
+
+        csv_data = db.csv.aggregate(
+            [
+                {
+                    "$match": {"csv_id": ObjectId(csv_id)},
+                },
+                {
+                    "$addFields": {"_id": {"$toString": "$_id"}},
+                },
+                {"$project": {"csv_id": 0}},
+                {
+                    "$skip": skip,
+                },
+                {
+                    "$limit": limit,
+                },
+            ]
+        )
+
+        total = db.csv.count_documents({"csv_id": ObjectId(csv_id)})
+
+        if not csv_data:
+            return jsonify({"message": "CSV data not found"}), 404
+
+        return jsonify({"data": list(csv_data), "total": total}), 200
+
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
+
+
+@csv_routes.route("/csv/<csv_id>/statistics", methods=["GET"])
+def get_csv_statistics(csv_id):
+    csv_data = db.csv.aggregate(
+        [
+            {
+                "$match": {"csv_id": ObjectId(csv_id)},
+            },
+            {
+                "$addFields": {"_id": {"$toString": "$_id"}},
+            },
+            {
+                "$project": {"csv_id": 0},
+            },
+        ]
+    )
 
     if not csv_data:
         return jsonify({"message": "CSV data not found"}), 404

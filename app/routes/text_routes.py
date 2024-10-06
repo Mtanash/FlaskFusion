@@ -1,68 +1,95 @@
 from flask import Blueprint, request, jsonify
 from transformers import pipeline
-import spacy
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.manifold import TSNE
 import matplotlib.pyplot as plt
 import io
 import base64
+from app.services import text_services
+from app.db.db import db
+from sklearn.metrics.pairwise import cosine_similarity
+
 
 text_routes = Blueprint("text", __name__)
 
-summarizer = pipeline("summarization", model="t5-small")
-sentiment_analyzer = pipeline("sentiment-analysis")
-nlp = spacy.load("en_core_web_sm")
 
-
-@text_routes.route("/text/summarize", methods=["POST"])
-def summarize_text():
+@text_routes.route("/text", methods=["POST"])
+def create_text():
     text = request.json.get("text")
 
     if not text:
         return jsonify({"message": "No text found"}), 400
 
     try:
-        summary = summarizer(text, max_length=100, min_length=10, do_sample=False)[0][
-            "summary_text"
-        ]
+        response = text_services.create_text(text)
+        return jsonify(response), 201
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
+
+
+@text_routes.route("/text", methods=["GET"])
+def get_text():
+    page = request.args.get("page", default=1, type=int)
+    page_size = request.args.get("page_size", default=10, type=int)
+
+    if page < 1:
+        return jsonify({"message": "Invalid page number"}), 400
+
+    if page_size < 1:
+        return jsonify({"message": "Invalid page size"}), 400
+
+    try:
+        data = text_services.get_text(page, page_size)
+        return jsonify(data), 200
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
+
+
+@text_routes.route("/text/<text_id>", methods=["GET"])
+def get_text_by_id(text_id):
+    try:
+        text = text_services.get_text_by_id(text_id)
+        return jsonify(text), 200
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
+
+
+@text_routes.route("/text/<text_id>", methods=["DELETE"])
+def delete_text(text_id):
+    try:
+        text_services.delete_text(text_id)
+        return jsonify({"message": "Text deleted successfully"}), 200
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
+
+
+@text_routes.route("/text/<text_id>/summarize", methods=["POST"])
+def summarize_text(text_id):
+    try:
+        summary = text_services.summarize_text(text_id)
+        text_services.update_text(text_id, {"summary": summary})
         return jsonify({"summary": summary}), 200
     except Exception as e:
         return jsonify({"message": str(e)}), 500
 
 
-@text_routes.route("/text/keywords", methods=["POST"])
-def extract_keywords():
-    text = request.json.get("text")
-
-    if not text:
-        return jsonify({"message": "No text found"}), 400
-
+@text_routes.route("/text/<text_id>/keywords", methods=["POST"])
+def extract_keywords(text_id):
     try:
-        doc = nlp(text)
-        keywords = set()
-
-        for token in doc:
-            if token.pos_ in ["NOUN", "PROPN"] and not token.is_stop:
-                keywords.add(token.text)
-
-        return jsonify({"keywords": list(keywords)}), 200
+        keywords = text_services.get_text_keywords(text_id)
+        text_services.update_text(text_id, {"keywords": keywords})
+        return jsonify({"keywords": keywords}), 200
 
     except Exception as e:
         return jsonify({"message": str(e)}), 500
 
 
-@text_routes.route("/text/sentiment", methods=["POST"])
-def analyze_sentiment():
-    text = request.json.get("text")
-
-    if not text:
-        return jsonify({"message": "No text found"}), 400
-
+@text_routes.route("/text/<text_id>/sentiment", methods=["POST"])
+def analyze_sentiment(text_id):
     try:
-        result = sentiment_analyzer(text)
-        sentiment = result[0]
-
-        return jsonify({"label": sentiment["label"], "score": sentiment["score"]}), 200
+        sentiment = text_services.analyze_sentiment(text_id)
+        text_services.update_text(text_id, {"sentiment": sentiment})
+        return jsonify(sentiment), 200
 
     except Exception as e:
         return jsonify({"message": str(e)}), 500
@@ -111,3 +138,46 @@ def tsne_visualization():
     img_base64 = base64.b64encode(buf.read()).decode("utf-8")
 
     return jsonify({"image": img_base64}), 200
+
+
+@text_routes.route("/text/search", methods=["POST"])
+def search_text():
+    query = request.json.get("query")
+
+    if not query:
+        return jsonify({"message": "Text and query are required"}), 400
+
+    try:
+        texts_cursor = db.text.aggregate(
+            [{"$group": {"_id": 0, "texts": {"$push": "$text"}}}]
+        )
+
+        texts = list(texts_cursor)[0]["texts"]
+
+        tfidf_vectorizer = TfidfVectorizer()
+        tfidf_matrix = tfidf_vectorizer.fit_transform(texts)
+
+        query_vec = tfidf_vectorizer.transform([query])
+
+        similarities = cosine_similarity(query_vec, tfidf_matrix).flatten()
+
+        similar_texts = sorted(
+            [(texts[i], sim) for i, sim in enumerate(similarities)],
+            key=lambda x: x[1],
+            reverse=True,
+        )[:3]
+
+        return jsonify(similar_texts), 200
+
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
+
+
+@text_routes.route("/text/<text_id>/categorize", methods=["POST"])
+def categorize_text(text_id):
+    try:
+        category = text_services.categorize_text(text_id)
+        text_services.update_text(text_id, {"category": category})
+        return jsonify({"category": category}), 200
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
