@@ -71,6 +71,12 @@ def upload_images():
 
             file.save(filepath)
 
+            with Image.open(filepath) as img:
+                width, height = img.size
+                img.close()
+
+            file_size = os.path.getsize(filepath)
+
             image_metadata = {
                 "_id": image_id,
                 "original_name": file.filename,
@@ -79,6 +85,9 @@ def upload_images():
                 "uploaded_at": datetime.now(),
                 "color_histogram": None,
                 "segmentation_mask": None,
+                "width": width,
+                "height": height,
+                "file_size": file_size,
             }
 
             db.images.insert_one(image_metadata)
