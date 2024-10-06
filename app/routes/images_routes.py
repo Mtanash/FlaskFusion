@@ -75,6 +75,7 @@ def upload_images():
                 "_id": image_id,
                 "original_name": file.filename,
                 "file_path": filepath,
+                "filename": f"{str(image_id)}.{file_ext}",
                 "uploaded_at": datetime.now(),
                 "color_histogram": None,
                 "segmentation_mask": None,
@@ -98,6 +99,39 @@ def upload_images():
         ),
         200,
     )
+
+
+@images_routes.route("/images/<image_id>", methods=["GET"])
+def get_image(image_id):
+    try:
+        image = db.images.aggregate(
+            [
+                {"$match": {"_id": ObjectId(image_id)}},
+                {"$addFields": {"_id": {"$toString": "$_id"}}},
+            ]
+        )
+        if not image:
+            return jsonify({"message": "Image not found"}), 404
+
+        return (
+            jsonify(
+                {
+                    "data": list(image)[0],
+                }
+            ),
+            200,
+        )
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
+
+
+@images_routes.route("/images/<image_id>", methods=["DELETE"])
+def delete_image(image_id):
+    try:
+        db.images.delete_one({"_id": ObjectId(image_id)})
+        return jsonify({"message": "Image deleted successfully"}), 200
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
 
 
 @images_routes.route("/images/<image_id>/histogram", methods=["POST"])

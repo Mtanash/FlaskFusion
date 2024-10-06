@@ -133,7 +133,7 @@ def get_csv():
             ]
         )
         data = list(data_cursor)
-        total = db.csv.count_documents({})
+        total = db.csvmetadata.count_documents({})
         return jsonify({"data": data, "total": total}), 200
     except Exception as e:
         return jsonify({"message": str(e)}), 500
