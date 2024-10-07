@@ -27,7 +27,7 @@ def serve_file(name):
 
 @app.route("/")
 def index():
-    return "<h1>Hello, World!</h1>"
+    return "<h1>Welcome to FlaskFusion app v1.0 🚀🚀</h1>"
 
 
 @app.errorhandler(Exception)
