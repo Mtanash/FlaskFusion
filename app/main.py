@@ -1,10 +1,11 @@
-from flask import Flask, send_from_directory
+from flask import Flask, send_from_directory, jsonify
 from app.routes.csv_routes import csv_routes
 from app.routes.images_routes import images_routes
 from app.routes.text_routes import text_routes
 from dotenv import load_dotenv
 from flask_cors import CORS
 import os
+from app.errors import BaseError
 
 load_dotenv()
 
@@ -27,6 +28,13 @@ def serve_file(name):
 @app.route("/")
 def index():
     return "<h1>Hello, World!</h1>"
+
+
+@app.errorhandler(Exception)
+def handle_error(error):
+    if isinstance(error, BaseError):
+        return jsonify({"message": error.message}), error.status_code
+    return jsonify({"message": "An unexpected error occurred"}), 500
 
 
 if __name__ == "__main__":

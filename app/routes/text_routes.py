@@ -63,38 +63,6 @@ def delete_text(text_id):
         return jsonify({"message": str(e)}), 500
 
 
-@text_routes.route("/text/<text_id>/summarize", methods=["POST"])
-def summarize_text(text_id):
-    try:
-        summary = text_services.summarize_text(text_id)
-        text_services.update_text(text_id, {"summary": summary})
-        return jsonify({"summary": summary}), 200
-    except Exception as e:
-        return jsonify({"message": str(e)}), 500
-
-
-@text_routes.route("/text/<text_id>/keywords", methods=["POST"])
-def extract_keywords(text_id):
-    try:
-        keywords = text_services.get_text_keywords(text_id)
-        text_services.update_text(text_id, {"keywords": keywords})
-        return jsonify({"keywords": keywords}), 200
-
-    except Exception as e:
-        return jsonify({"message": str(e)}), 500
-
-
-@text_routes.route("/text/<text_id>/sentiment", methods=["POST"])
-def analyze_sentiment(text_id):
-    try:
-        sentiment = text_services.analyze_sentiment(text_id)
-        text_services.update_text(text_id, {"sentiment": sentiment})
-        return jsonify(sentiment), 200
-
-    except Exception as e:
-        return jsonify({"message": str(e)}), 500
-
-
 @text_routes.route("/text/tsne", methods=["POST"])
 def tsne_visualization():
     texts = request.json.get("texts", [])
@@ -173,11 +141,55 @@ def search_text():
         return jsonify({"message": str(e)}), 500
 
 
-@text_routes.route("/text/<text_id>/categorize", methods=["POST"])
-def categorize_text(text_id):
+@text_routes.route("/text/categorize", methods=["POST"])
+def categorize_text():
     try:
-        category = text_services.categorize_text(text_id)
-        text_services.update_text(text_id, {"category": category})
-        return jsonify({"category": category}), 200
+        text = request.json.get("text")
+        if not text:
+            return jsonify({"message": "Text is required"}), 400
+
+        categories = text_services.categorize_text(text)
+        return jsonify(categories), 200
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
+
+
+@text_routes.route("/text/sentiment", methods=["POST"])
+def analyze_sentiment():
+    try:
+        text = request.json.get("text")
+        if not text:
+            return jsonify({"message": "Text is required"}), 400
+
+        sentiment = text_services.analyze_sentiment(text)
+        return jsonify(sentiment), 200
+
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
+
+
+@text_routes.route("/text/keywords", methods=["POST"])
+def extract_keywords():
+    try:
+        text = request.json.get("text")
+        if not text:
+            return jsonify({"message": "Text is required"}), 400
+
+        keywords = text_services.get_text_keywords(text)
+        return jsonify({"keywords": keywords}), 200
+
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
+
+
+@text_routes.route("/text/summarize", methods=["POST"])
+def summarize_text():
+    try:
+        text = request.json.get("text")
+        if not text:
+            return jsonify({"message": "Text is required"}), 400
+
+        summary = text_services.summarize_text(text)
+        return jsonify({"summary": summary}), 200
     except Exception as e:
         return jsonify({"message": str(e)}), 500

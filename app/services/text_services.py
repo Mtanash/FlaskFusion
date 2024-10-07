@@ -6,8 +6,10 @@ import spacy
 
 summarizer = pipeline("summarization", model="t5-small")
 sentiment_analyzer = pipeline("sentiment-analysis")
+
 classifier = pipeline(
-    "text-classification", model="distilbert-base-uncased-finetuned-sst-2-english"
+    model="lxyuan/distilbert-base-multilingual-cased-sentiments-student",
+    return_all_scores=True,
 )
 
 
@@ -48,19 +50,17 @@ def get_text_by_id(id: str) -> dict:
     return db.text.find_one({"_id": ObjectId(id)})
 
 
-def summarize_text(text_id: str) -> str:
-    text_record = get_text_by_id(text_id)
+def summarize_text(text: str) -> str:
 
-    summary = summarizer(
-        text_record["text"], max_length=100, min_length=10, do_sample=False
-    )[0]["summary_text"]
+    summary = summarizer(text, max_length=100, min_length=10, do_sample=False)[0][
+        "summary_text"
+    ]
     return summary
 
 
-def get_text_keywords(text_id: str) -> list:
-    text_record = get_text_by_id(text_id)
+def get_text_keywords(text: str) -> list:
 
-    doc = nlp(text_record["text"])
+    doc = nlp(text)
     keywords = set()
 
     for token in doc:
@@ -77,8 +77,7 @@ def analyze_sentiment(text: str) -> dict:
     return {"label": sentiment["label"], "score": sentiment["score"]}
 
 
-def categorize_text(text_id: str) -> dict:
-    text_record = get_text_by_id(text_id)
-    categories = classifier(text_record["text"])
+def categorize_text(text: str) -> dict:
+    categories = classifier(text)
 
     return {"categories": categories}
