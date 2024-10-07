@@ -8,10 +8,10 @@ from app.services.images_services import ImagesService
 
 images_routes = Blueprint("images", __name__)
 
-images_repository = ImagesRepository(db)
-images_service = ImagesService(images_repository)
-
 UPLOAD_FOLDER = config.get("images_upload_folder")
+
+images_repository = ImagesRepository(db, UPLOAD_FOLDER)
+images_service = ImagesService(images_repository)
 
 # create the uploads folder if it doesn't exist
 if not os.path.exists(UPLOAD_FOLDER):
@@ -48,12 +48,13 @@ def get_images():
 
 @images_routes.route("/images/upload", methods=["POST"])
 def upload_images():
-    return jsonify(images_service.upload_images(request.files)), 200
+    files = request.files.getlist("files")
+    return jsonify(images_service.upload_images(files)), 200
 
 
 @images_routes.route("/images/<image_id>", methods=["GET"])
 def get_image(image_id):
-    return jsonify(images_service.get_image(image_id)), 200
+    return jsonify({"data": images_service.get_image(image_id)}), 200
 
 
 @images_routes.route("/images/<image_id>", methods=["DELETE"])

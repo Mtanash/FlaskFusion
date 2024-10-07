@@ -1,66 +1,17 @@
 from flask import Blueprint, request, jsonify
-from transformers import pipeline
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.manifold import TSNE
 import matplotlib.pyplot as plt
 import io
 import base64
-from app.services import text_services
 from app.db.db import db
 from sklearn.metrics.pairwise import cosine_similarity
+from app.services.text_services import TextProcessingService
 
 
 text_routes = Blueprint("text", __name__)
 
-
-@text_routes.route("/text", methods=["POST"])
-def create_text():
-    text = request.json.get("text")
-
-    if not text:
-        return jsonify({"message": "No text found"}), 400
-
-    try:
-        response = text_services.create_text(text)
-        return jsonify(response), 201
-    except Exception as e:
-        return jsonify({"message": str(e)}), 500
-
-
-@text_routes.route("/text", methods=["GET"])
-def get_text():
-    page = request.args.get("page", default=1, type=int)
-    page_size = request.args.get("page_size", default=10, type=int)
-
-    if page < 1:
-        return jsonify({"message": "Invalid page number"}), 400
-
-    if page_size < 1:
-        return jsonify({"message": "Invalid page size"}), 400
-
-    try:
-        data = text_services.get_text(page, page_size)
-        return jsonify(data), 200
-    except Exception as e:
-        return jsonify({"message": str(e)}), 500
-
-
-@text_routes.route("/text/<text_id>", methods=["GET"])
-def get_text_by_id(text_id):
-    try:
-        text = text_services.get_text_by_id(text_id)
-        return jsonify(text), 200
-    except Exception as e:
-        return jsonify({"message": str(e)}), 500
-
-
-@text_routes.route("/text/<text_id>", methods=["DELETE"])
-def delete_text(text_id):
-    try:
-        text_services.delete_text(text_id)
-        return jsonify({"message": "Text deleted successfully"}), 200
-    except Exception as e:
-        return jsonify({"message": str(e)}), 500
+text_processing_service = TextProcessingService()
 
 
 @text_routes.route("/text/tsne", methods=["POST"])
@@ -143,53 +94,40 @@ def search_text():
 
 @text_routes.route("/text/categorize", methods=["POST"])
 def categorize_text():
-    try:
-        text = request.json.get("text")
-        if not text:
-            return jsonify({"message": "Text is required"}), 400
+    text = request.json.get("text")
+    if not text:
+        return jsonify({"message": "Text is required"}), 400
 
-        categories = text_services.categorize_text(text)
-        return jsonify(categories), 200
-    except Exception as e:
-        return jsonify({"message": str(e)}), 500
+    categories = text_processing_service.categorize_text(text)
+    return jsonify(categories), 200
 
 
 @text_routes.route("/text/sentiment", methods=["POST"])
 def analyze_sentiment():
-    try:
-        text = request.json.get("text")
-        if not text:
-            return jsonify({"message": "Text is required"}), 400
+    text = request.json.get("text")
+    if not text:
+        return jsonify({"message": "Text is required"}), 400
 
-        sentiment = text_services.analyze_sentiment(text)
-        return jsonify(sentiment), 200
-
-    except Exception as e:
-        return jsonify({"message": str(e)}), 500
+    sentiment = text_processing_service.analyze_sentiment(text)
+    return jsonify(sentiment), 200
 
 
 @text_routes.route("/text/keywords", methods=["POST"])
 def extract_keywords():
-    try:
-        text = request.json.get("text")
-        if not text:
-            return jsonify({"message": "Text is required"}), 400
 
-        keywords = text_services.get_text_keywords(text)
-        return jsonify({"keywords": keywords}), 200
+    text = request.json.get("text")
+    if not text:
+        return jsonify({"message": "Text is required"}), 400
 
-    except Exception as e:
-        return jsonify({"message": str(e)}), 500
+    keywords = text_processing_service.get_text_keywords(text)
+    return jsonify({"keywords": keywords}), 200
 
 
 @text_routes.route("/text/summarize", methods=["POST"])
 def summarize_text():
-    try:
-        text = request.json.get("text")
-        if not text:
-            return jsonify({"message": "Text is required"}), 400
+    text = request.json.get("text")
+    if not text:
+        return jsonify({"message": "Text is required"}), 400
 
-        summary = text_services.summarize_text(text)
-        return jsonify({"summary": summary}), 200
-    except Exception as e:
-        return jsonify({"message": str(e)}), 500
+    summary = text_processing_service.summarize_text(text)
+    return jsonify({"summary": summary}), 200
