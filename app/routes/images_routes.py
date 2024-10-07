@@ -1,7 +1,6 @@
 from flask import Blueprint, request, jsonify
 import os
 from app.db.db import db
-from skimage import io
 from app.config import config
 from app.repositories.images_repository import ImagesRepository
 from app.services.images_services import ImagesService

@@ -1,0 +1,22 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: app
+    ports:
+      - 5000:5000
+    depends_on:
+      - db
+    environment:
+      - FLASK_APP=app.main.py
+      - FLASK_DEBUG=1
+      - FLASK_ENV=development
+      - MONGO_URI=mongodb://db:27017/app
+
+  db:
+    image: mongo:7.0
+    ports:
+      - 27017:27017
+    volumes:
+      - ./data:/data
