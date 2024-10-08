@@ -32,6 +32,9 @@ def index():
 
 @app.errorhandler(Exception)
 def handle_error(error):
+    print(
+        f"An error occurred: {error.message} (Status code: {error.status_code}), stack trace: {error.__traceback__}"
+    )
     if isinstance(error, BaseError):
         return jsonify({"message": error.message}), error.status_code
     return jsonify({"message": "An unexpected error occurred"}), 500
