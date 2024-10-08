@@ -27,8 +27,23 @@ FlaskFusion is an advanced software application designed for data analysis and m
 
 ### Setup
 
+#### Running with Bash Script
+
 ```bash
 bash start_app.sh
+```
+
+#### Running with Docker
+
+```bash
+docker build -t flaskfusion .
+docker run -p 5000:5000 flaskfusion
+```
+
+#### Running with Docker Compose
+
+```bash
+docker-compose up -d
 ```
 
 ## Usage
