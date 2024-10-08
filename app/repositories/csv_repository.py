@@ -144,7 +144,7 @@ class CsvRepository:
         lower_bound = Q1 - 1.5 * IQR
         upper_bound = Q3 + 1.5 * IQR
         outliers = series[(series < lower_bound) | (series > upper_bound)]
-        return outliers.astype(object).to_dict(orient="records")
+        return outliers.astype(object).to_dict()
 
     def get_csv_statistics(self, csv_id: str) -> dict:
         data = self.retrieve_csv_data_as_dataframe(csv_id)
