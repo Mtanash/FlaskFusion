@@ -29,8 +29,16 @@ FlaskFusion is an advanced software application designed for data analysis and m
 
 #### Running with Bash Script
 
+To run the application in development mode, run the following command:
+
 ```bash
-bash start_app.sh
+bash start_dev.sh
+```
+
+To run the application in production mode, run the following command:
+
+```bash
+bash start_prod.sh
 ```
 
 #### Running with Docker

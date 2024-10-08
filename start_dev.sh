@@ -41,7 +41,7 @@ echo "Dependencies installed successfully"
 
 # Start the Flask app
 echo "Starting Flask app..."
-flask --app app.main run
+flask --app app.main run --debug
 
 if [ $? -ne 0 ]; then
   echo "Failed to start Flask app"
